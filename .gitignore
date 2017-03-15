@@ -1,0 +1,7 @@
+.idea
+config.json
+gdrive-key.json
+node_modules
+
+src/*.js
+src/*.js.map
