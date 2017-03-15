@@ -1,0 +1,9 @@
+{
+  "gDriveRootId": "XXXXXXXXXXXXXXXXXXX",
+  "gDriveSubject": "email@yourdomain.com",
+  "validFileExtensions": [
+	"mkv",
+	"avi",
+	"mp4"
+  ]
+}
