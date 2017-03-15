@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Moves video files from a local file source to a Google Drive account",
   "main": "index.js",
+  "repository": "https://github.com/jasonatepaint/google-drive-updater",
   "scripts": {
     "updateVideo": "node index --function uploadRecent"
   },

@@ -11,8 +11,8 @@ function main() {
         .option('-f, --function [func]', 'The function to run', 'uploadRecent')
         .option('-p, --path [path]', 'The base path to the local video files', '')
         .option('-P, --prefix [prefix]', 'A path prefix in relation to directories underneath the local base path.', '')
-        .option('-s, --since [since]', 'A prefix to limit what directories are scanned', '')
-        .option('-d, --days-ago [daysAgo]', 'Number of days back to consider when updating. ignored if --since is used', '1')
+        .option('-s, --since [since]', 'Find files based on files created since an iso8601 date.', '')
+        .option('-d, --days-ago [daysAgo]', 'Find files based on number of days back to consider. ignored if --since is used.', '1')
         .option('-r, --dry-run [dryRun]', 'Determines whether files are copied or not', false)
         .parse(process.argv);
 
@@ -21,10 +21,6 @@ function main() {
         case "uploadRecent":
             uploadRecent(program);
     }
-    //
-    // return svc.updateModifiedDateOnGoogleDriveFiles().then(() => {
-    //    console.log("done");
-    // });
 }
 
 function uploadRecent(program) {
