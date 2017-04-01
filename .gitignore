@@ -5,3 +5,7 @@ node_modules
 
 src/*.js
 src/*.js.map
+
+logs/
+
+last_run_since_*.txt

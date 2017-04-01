@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as mime from 'mime-types';
 import * as moment from 'moment';
 import * as util from 'util';
+import * as log4js from 'log4js';
 
 const MIME_TYPE_FOLDER = "application/vnd.google-apps.folder";
 const MIME_TYPE_VIDEO_PREFIX = "video/";
@@ -15,6 +16,7 @@ const FIELDS_FOLDER = "id,name,parents,createdTime,modifiedTime";
 
 let key = require('./../config/gdrive-key.json');
 let config = require('./../config/config.json');
+let logger = log4js.getLogger();
 
 const MY_DRIVE_ROOT_ID = config.gDriveRootId;
 
@@ -43,7 +45,7 @@ export class GoogleDriveClient {
         let deferred = Promise.defer();
         this.jwtClient.authorize((err, tokens) => {
             if (err)
-                console.log(err);
+                logger.error(err);
             deferred.resolve();
         });
         return deferred.promise;
@@ -64,7 +66,8 @@ export class GoogleDriveClient {
 
         return Promise.promisify(this.drive.files.list)(params)
         .catch((e) => {
-            console.error(util.format("getFolders:\n%s\n\n%s", JSON.stringify(params, e)));
+            logger.error(util.format("getFolders:\n%s\n%s", JSON.stringify(params), e));
+            return { files: [] };
         });
     };
 
@@ -73,8 +76,8 @@ export class GoogleDriveClient {
         q.push("trashed = false");
         if (parentId !== undefined && parentId !== null)
             q.push("'" + parentId + "' in parents");
-        if (mimeType !== undefined && mimeType !== null)
-            q.push("mimeType contains '" + mimeType + "'");
+        // if (mimeType !== undefined && mimeType !== null)
+        //     q.push("mimeType contains '" + mimeType + "'");
         return q.join(" and ");
     }
 
@@ -109,7 +112,7 @@ export class GoogleDriveClient {
             return res.files;
         })
         .catch((e) => {
-            console.error(util.format("getFolders:\n%s\n\n%s", JSON.stringify(params, e)));
+            logger.error(util.format("getFolders:\n%s\n%s", JSON.stringify(params), e));
         });
     };
 
@@ -123,7 +126,7 @@ export class GoogleDriveClient {
             fields: FIELDS_FILE
         };
         return Promise.promisify(this.drive.files.create)(params).catch((e) => {
-            console.error(util.format("createFolders:\n%s\n\n%s", JSON.stringify(params, e)));
+            logger.error(util.format("createFolders:\n%s\n%s", JSON.stringify(params), e));
         });
     }
 
@@ -141,6 +144,8 @@ export class GoogleDriveClient {
             },
             fields: FIELDS_FILE
         };
+
+        //TODO: Figure out how to give "percentage finished" feedback to console
         return Promise.promisify(this.drive.files.create)(params);
     }
 

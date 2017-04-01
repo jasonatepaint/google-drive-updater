@@ -10,10 +10,15 @@ import * as readDir from 'readdir';
 import * as path from 'path';
 import * as moment from 'moment';
 import { Spinner } from 'cli-spinner';
+import * as log4js from 'log4js';
+
+let logger = log4js.getLogger();
 
 let config = require('./../config/config.json');
 
 export class MediaServices {
+
+    readonly LAST_RUN_PATH_FORMAT:string = "last_run_since_%s.txt";
 
     gDriveClient: any;
     localBasePath: string;
@@ -27,6 +32,19 @@ export class MediaServices {
         config.validFileExtensions.forEach((ext) => {
            this.videoFilterArray.push(util.format("**.%s", ext));
         });
+    }
+
+    getLastRunTime(prefix:string) {
+        let path = util.format(this.LAST_RUN_PATH_FORMAT, prefix);
+        if (!fs.existsSync(path))
+            return null;
+        let dt = fs.readFileSync(path, 'utf8');
+        return moment(dt);
+    }
+
+    setLastRunTime(dt:any, prefix:string) {
+        let path = util.format(this.LAST_RUN_PATH_FORMAT, prefix);
+        fs.writeFileSync(path, dt.toISOString())
     }
 
     /**
@@ -62,12 +80,12 @@ export class MediaServices {
                             return this.gDriveClient.updateFile(file.id, {
                                 modifiedTime: dtLocal.toISOString()
                             }).then((res) => {
-                                console.log(file.name);
+                                logger.info(file.name);
                             });
                         }
                     });
                 }).then(() => {
-                    console.log("Processed Page " + pageCount++);
+                    logger.info("Processed Page " + pageCount++);
                     return response.nextPageToken === undefined ? null : response.nextPageToken;
                 });
             });
@@ -83,13 +101,23 @@ export class MediaServices {
         });
     }
 
+    /***
+     * Uploads valid files that have been created 'since' the given date
+     * @param since - Filter items to return only items created since this date
+     * @param prefix - A directory path to filter the collection of files uploaded
+     * @param dryRun - Collects the files that would be uploaded, but doesn't actually upload.
+     * @returns {Bluebird<U>}
+     */
     uploadRecentItemsSince(since:any, prefix:string, dryRun:boolean) {
         let knownPaths = {};
+        let runTime = moment();
 
         if (dryRun)
-            console.log("Running in dry-run mode");
+            logger.info("Running in dry-run mode");
 
-        let spinner = new Spinner(util.format("Looking for new files since %s", since.toString()));
+        let msg:string = util.format("Looking for new files created since %s", since.toString());
+        logger.trace(msg);
+        let spinner = new Spinner(msg);
         spinner.setSpinnerString(18);
         spinner.start();
 
@@ -98,18 +126,20 @@ export class MediaServices {
 
         return this.getFilesSince(basePath, since).then((toUpload) => {
 
-            spinner.stop();
-            let msg:string = toUpload.map((e) => { return path.join(prefix, e.path)  }).join("\n");
-            console.log(util.format("\n%d files to upload\n%s", toUpload.length, msg));
+            spinner.stop(true);
+            msg = toUpload.map((e) => { return path.join(prefix, e.path)  }).join("\n");
+            logger.info(util.format("%d files to upload:\n%s", toUpload.length, msg));
+            spinner.start();
 
             //Process each file one-by-one
-            spinner.start();
             let fileIndex:number = 0, fileCount:number = toUpload.length;
             return Promise.mapSeries(toUpload, (item) => {
 
                 let file:string = path.join(prefix, item.path);
                 let filePath:string = path.dirname(file);
-                spinner.setSpinnerTitle(util.format("Uploading (%d/%d) - %s", ++fileIndex, fileCount, file));
+                msg = util.format("Uploading (%d/%d) - %s", ++fileIndex, fileCount, file);
+                logger.trace(msg);
+                spinner.setSpinnerTitle(msg);
 
                 return this.getParentIdForPath(filePath, knownPaths).then((parentId) => {
 
@@ -143,12 +173,24 @@ export class MediaServices {
             });
         }).then(() => {
             spinner.stop(true);
-            console.log(util.format("Uploaded %d videos\n%s", uploadedFiles.length, uploadedFiles.join("\n")));
-            if (skippedFiles.length > 0)
-                console.log(util.format("Skipped %d videos\n%s", skippedFiles.length, skippedFiles.join("\n")));
+
+            if (!dryRun)
+                this.setLastRunTime(runTime, prefix);
+
+            let msg = util.format("Uploaded %d videos", uploadedFiles.length);
+            if (skippedFiles.length > 0) {
+                msg += util.format(" and skipped %d videos:\n%s", skippedFiles.length, skippedFiles.join("\n"));
+            }
+            logger.info(msg);
         });
     }
 
+    /**
+     * Gets an array of valid files to upload that have been created 'since' the given date.
+     * @param basePath
+     * @param since
+     * @returns {Bluebird<Array>}
+     */
     getFilesSince(basePath:string, since:any) {
         let toUpload = [];
         return Promise.promisify(readDir.read)(basePath, this.videoFilterArray).then((files) => {
@@ -196,7 +238,7 @@ export class MediaServices {
                if (folder == null) {
                    return this.gDriveClient.createFolder(part, parentId).then((newFolder) => {
                        parentId = newFolder.id;
-                       console.log(util.format("\nCreated Folder: '%s' for path: '%s'", part, path));
+                       logger.info(util.format("\nCreated Folder: '%s' for path: '%s'", part, path));
                    });
                } else {
                    parentId = folder.id;

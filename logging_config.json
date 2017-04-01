@@ -1,0 +1,25 @@
+{
+  "appenders": [
+	{
+	  "type": "logLevelFilter",
+	  "level": "DEBUG",
+	  "appender": {
+		"type": "console",
+		"layout": {
+		  "type": "pattern",
+		  "pattern": "%m"
+		}
+	  }
+	},
+	{
+	  "type": "dateFile",
+	  "filename": "results",
+	  "pattern": "-MM-dd-yyyy.log",
+	  "alwaysIncludePattern": true,
+	  "layout": {
+		"type": "pattern",
+		"pattern": "[%r] - %m"
+	  }
+	}
+  ]
+}
